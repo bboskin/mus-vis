@@ -1,17 +1,12 @@
 #lang racket
 
-(require "events.rkt" "helpers.rkt" "palettes.rkt" 2htdp/image)
+(require "events.rkt" "clusters.rkt" "helpers.rkt" "palettes.rkt" 2htdp/image)
 
 (provide (all-defined-out))
 (struct Shape (shape mode init-size final-size init-x init-y final-x final-y))
 
-
 (struct EventObjMenuFields
   (name dur color-settings obj-kind obj selected-field))
-
-(struct Color-settings (mode pal-mode col pal))
-(define blank-color-settings
-  (Color-settings 'palette 'continuous 0 0))
 
 (define blank-event-obj-menu
   (EventObjMenuFields "" 20 blank-color-settings #f #f 0))
@@ -19,74 +14,22 @@
 (define (make-blank-kind kind)
   (match kind
     ['shape (Shape 'circle "solid" 0 0 100 100 100 100)]
+    ['cluster blank-cluster]
     ['background 'background]
     [else #f]))
 
 (define (next-kind kind)
-  (match kind ['shape 'background] [else 'shape]))
+  (match kind ['shape 'cluster] ['cluster 'background] [else 'shape]))
 (define (prev-kind kind)
-  (match kind ['background 'shape] [else 'background]))
+  (match kind ['background 'cluster] ['cluster 'shape] [else 'background]))
 
-(define (next-shape sh)
-  (match sh [#f 'square] ['square 'circle] ['circle 'triangle] ['triangle 'square]))
-(define (prev-shape sh)
-  (match sh [#f 'circle] ['circle 'square] ['triangle 'circle] ['square 'triangle]))
 
 (define (num-fields obj-kind)
   (match obj-kind
     ['shape 13]
-    ['background 3]
+    ['cluster 18]
+    ['background 5]
     [#f 4]))
-#|
-Things you can do in the event-object-menu:
-
-- create a new event object
-   -- Fields:
-      - name
-      - duration
-      - color-jumpy/continuous
-      - location-jumpy/continuous
-      - size-jumpy/continuous
-      - palette
-        -- one of:
-           - single-shape
-             - shape, init-size, final-size, color, init-loc, final-loc
-           - background-alteration
-             - gradient?
-             - resulting-color             
-           - cluster
-             - initial tightness
-             - final tightness
-             - shapes involved
-             - size of shapes
-             - number of members
-             - initial-shape (line, row, group)
-             - initial location (options depend on init-shape)
-             - final location (options depend on init-shape)
-             - direction (x, y change)
-           - geometric-pattern
-             - degree-continuous
-             - number of lines
-             - color palette
-             - function
-             - sync?
-             - screen region
-           - loaded image
-             - initial location
-             - ending location
-             - rotating?
-
-- modify an existing event object
-   -- any field mentioned above can be altered
-
--- copy an existing event object
--- delete an existing event object
-|#
-
-(define (calculate-change i f dur)
-  (λ (x)
-    (let ((a (quotient (- f i) dur)))
-      (max 0 (+ x a)))))
 
 (define (Shape->Component S dur pal C P)
   (match S
@@ -108,9 +51,11 @@ Things you can do in the event-object-menu:
                (y ,y-i ,Δ-y))))])))))
 
 
+
 (define (Obj->Components k o dur pal C P)
   (match k
     ['shape (list (Shape->Component o dur pal C P))]
+    ['cluster (Cluster->Components o dur pal C P)]
     [else (error "not ready yet")]))
 
 (define (draw-obj-fields obj sel)
@@ -124,6 +69,18 @@ Things you can do in the event-object-menu:
       (draw-field "9. Initial y coord:" y-i 8 sel "Select initial y coord")
       (draw-field "10. Final x coord:" x-f 9 sel "Select final x coord")
       (draw-field "11. Final y coord:" y-f 10 sel "Select final y coord")))
+    ((Cluster sh g-s c-m n s-r s-i s-f x-i y-i x-f y-f t)
+     (above/align "left"
+      (draw-field "5. Shape:" sh 4 sel "Select shape")
+      (draw-field "6. Color-mode:" c-m 5 sel "Select cluster size")
+      (draw-field "7. Cluster-size:" n 6 sel "Select cluster size")
+      (draw-field "8. Initial element size:" s-i 5 sel "Select initial size")
+      (draw-field "9. Final element size:" s-f 6 sel "Select final size")
+      (draw-field "8. Initial x coord:" x-i 7 sel "Select initial x coord")
+      (draw-field "9. Initial y coord:" y-i 8 sel "Select initial y coord")
+      (draw-field "10. Final x coord:" x-f 9 sel "Select final x coord")
+      (draw-field "11. Final y coord:" y-f 10 sel "Select final y coord")
+      (draw-field "12. Cluster tightness:" t 10 sel "Select cluster tightness")))
     (else empty-image)))
 
 (define (flip-pal-mode p)
@@ -200,6 +157,7 @@ Things you can do in the event-object-menu:
 (define (scroll-shape dir sel obj-kind obj)
   (match obj-kind
     ['shape (scroll-shape-shape dir sel obj)]
+    ['cluster (scroll-cluster dir sel obj)]
     [else obj]))
 
 (define (scroll dir sel M)

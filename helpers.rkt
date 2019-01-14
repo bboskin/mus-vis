@@ -18,6 +18,24 @@
 
 ;; useful functions
 
+
+(define (scroll-helper dir v)
+  (if dir (add1 v) (safe-sub1 v)))
+(define (next-shape sh)
+  (match sh [#f 'square] ['square 'circle] ['circle 'triangle] ['triangle 'square]))
+(define (prev-shape sh)
+  (match sh [#f 'circle] ['circle 'square] ['triangle 'circle] ['square 'triangle]))
+
+(define (next-group-shape sh)
+  (match sh [#f 'row] ['row 'col] ['col 'circle] ['circle 'row]))
+(define (prev-group-shape sh)
+  (match sh ['row 'circle] ['circle 'col] ['col 'row] [#f 'circle]))
+
+(define (next-color-mode sh)
+  (match sh ['random 'continuous] [else 'random]))
+(define (prev-color-mode sh)
+  (match sh ['continuous 'random] [else 'continuous]))
+
 (define (safe-sub1 x) (if (number? x) (max 0 (sub1 x)) 0))
 (define (safe-add1 x) (if (number? x) (add1 x) 0))
 
@@ -141,3 +159,17 @@
 (define (display-palette pal)
   (let ((k (/ MAX-PAL-LEN (max (length pal) 1))))
     (foldr (λ (x ans) (beside (rectangle k 100 "solid" x) ans)) empty-image pal)))
+
+
+;; Distance formulas
+
+(define (calculate-change i f dur)
+  (λ (x)
+    (let ((a (quotient (- f i) dur)))
+      (max 0 (+ x a)))))
+
+
+;; Structs
+(struct Color-settings (mode pal-mode col pal))
+(define blank-color-settings
+  (Color-settings 'palette 'continuous 0 0))
