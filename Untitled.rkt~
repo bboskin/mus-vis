@@ -1,0 +1,7 @@
+#lang racket
+
+#|
+The user interface for this thingy
+|#
+
+;; Constants
