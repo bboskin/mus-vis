@@ -1,13 +1,17 @@
 #lang racket
 
 (require "helpers.rkt"
-         "events.rkt")
+         "events.rkt"
+         2htdp/image)
 
-(provide (all-defined-out))
+(provide
+ blank-cluster
+ Cluster->Components
+ scroll-cluster
+ draw-obj-fields-cluster)
 
 (struct Cluster (shape group-shape color-mode count size-range init-size final-size init-x init-y final-x final-y tightness))
 (define blank-cluster (Cluster 'circle 'circle 'random 20 15 10 50 500 500 500 500 7))
-
 
 (define (make-cluster-next-loc-fns xi yi Δx Δy shape tightness)
   (let ((x-i (λ () (+ (random tightness) xi)))
@@ -62,3 +66,18 @@
        [13 (Cluster sh g-s c-m n s-r s-i s-f x-i y-i (scroll-helper dir x-f) y-f t)]
        [14 (Cluster sh g-s c-m n s-r s-i s-f x-i y-i x-f (scroll-helper dir y-f) t)]
        [15 (Cluster sh g-s c-m n s-r s-i s-f x-i y-i x-f (scroll-helper dir t))]))))
+
+(define (draw-obj-fields-cluster clu sel)
+  (match clu
+    [(Cluster sh g-s c-m n s-r s-i s-f x-i y-i x-f y-f t)
+     (above/align "left"
+      (draw-field "5. Shape:" sh 4 sel "Select shape")
+      (draw-field "6. Color-mode:" c-m 5 sel "Select cluster size")
+      (draw-field "7. Cluster-size:" n 6 sel "Select cluster size")
+      (draw-field "8. Initial element size:" s-i 5 sel "Select initial size")
+      (draw-field "9. Final element size:" s-f 6 sel "Select final size")
+      (draw-field "10. Initial x coord:" x-i 7 sel "Select initial x coord")
+      (draw-field "11. Initial y coord:" y-i 8 sel "Select initial y coord")
+      (draw-field "12. Final x coord:" x-f 9 sel "Select final x coord")
+      (draw-field "13. Final y coord:" y-f 10 sel "Select final y coord")
+      (draw-field "14. Cluster tightness:" t 10 sel "Select cluster tightness"))]))

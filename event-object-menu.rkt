@@ -1,86 +1,56 @@
 #lang racket
 
-(require "events.rkt" "clusters.rkt" "helpers.rkt" "palettes.rkt" 2htdp/image)
+(require "helpers.rkt"
+         2htdp/image
+         "clusters.rkt"
+         "shapes.rkt"
+         "events.rkt")
 
-(provide (all-defined-out))
-(struct Shape (shape mode init-size final-size init-x init-y final-x final-y))
+(provide
+ blank-event-obj-menu
+ draw-event-obj-menu
+ create-event-obj-key-handler)
 
-(struct EventObjMenuFields
-  (name dur color-settings obj-kind obj selected-field))
+(struct EventObjMenuFields (name dur color-settings obj-kind obj selected-field))
 
-(define blank-event-obj-menu
-  (EventObjMenuFields "" 20 blank-color-settings #f #f 0))
+(define blank-event-obj-menu (EventObjMenuFields "" INIT-DURATION blank-color-settings 'background 'background 0))
 
 (define (make-blank-kind kind)
   (match kind
-    ['shape (Shape 'circle "solid" 0 0 100 100 100 100)]
+    ['shape blank-shape]
     ['cluster blank-cluster]
     ['background 'background]
     [else #f]))
 
 (define (next-kind kind)
-  (match kind ['shape 'cluster] ['cluster 'background] [else 'shape]))
-(define (prev-kind kind)
-  (match kind ['background 'cluster] ['cluster 'shape] [else 'background]))
+  (match kind
+    ['shape 'cluster]
+    ['cluster 'background]
+    [else 'shape]))
 
+(define (prev-kind kind)
+  (match kind
+    ['background 'cluster]
+    ['cluster 'shape]
+    [else 'background]))
 
 (define (num-fields obj-kind)
   (match obj-kind
     ['shape 13]
-    ['cluster 18]
+    ['cluster 14]
     ['background 5]
     [#f 4]))
 
-(define (Shape->Component S dur pal C P)
-  (match S
-    ((Shape sh mode si-i si-f x-i y-i x-f y-f)
-     (let ((Δ-x (calculate-change x-i x-f dur))
-           (Δ-y (calculate-change y-i y-f dur))
-           (Δ-size (calculate-change si-i si-f dur)))
-       (match pal
-         [(Color-settings c-mode pal-mode col pal)
-          (let ((color-pkg (match c-mode
-                             ['color `(color ,(cadr (list-ref C col)))]
-                             ['palette `(palette 0 ,pal-mode ,(cadr (list-ref P pal)))])))
-            (make-component
-             color-pkg
-             `((shape ,sh #f)
-               (size ,si-i ,Δ-size)
-               (mode ,mode #f)
-               (x ,x-i ,Δ-x)
-               (y ,y-i ,Δ-y))))])))))
-
-
-
 (define (Obj->Components k o dur pal C P)
   (match k
-    ['shape (list (Shape->Component o dur pal C P))]
+    ['shape (Shape->Components o dur pal C P)]
     ['cluster (Cluster->Components o dur pal C P)]
     [else (error "not ready yet")]))
 
-(define (draw-obj-fields obj sel)
-  (match obj
-    ((Shape sh mode si-i si-f x-i y-i x-f y-f)
-     (above/align "left"
-      (draw-field "5. Shape:" sh 4 sel "Select shape")
-      (draw-field "6. Initial size:" si-i 5 sel "Select initial size")
-      (draw-field "7. Final size:" si-f 6 sel "Select final size")
-      (draw-field "8. Initial x coord:" x-i 7 sel "Select initial x coord")
-      (draw-field "9. Initial y coord:" y-i 8 sel "Select initial y coord")
-      (draw-field "10. Final x coord:" x-f 9 sel "Select final x coord")
-      (draw-field "11. Final y coord:" y-f 10 sel "Select final y coord")))
-    ((Cluster sh g-s c-m n s-r s-i s-f x-i y-i x-f y-f t)
-     (above/align "left"
-      (draw-field "5. Shape:" sh 4 sel "Select shape")
-      (draw-field "6. Color-mode:" c-m 5 sel "Select cluster size")
-      (draw-field "7. Cluster-size:" n 6 sel "Select cluster size")
-      (draw-field "8. Initial element size:" s-i 5 sel "Select initial size")
-      (draw-field "9. Final element size:" s-f 6 sel "Select final size")
-      (draw-field "8. Initial x coord:" x-i 7 sel "Select initial x coord")
-      (draw-field "9. Initial y coord:" y-i 8 sel "Select initial y coord")
-      (draw-field "10. Final x coord:" x-f 9 sel "Select final x coord")
-      (draw-field "11. Final y coord:" y-f 10 sel "Select final y coord")
-      (draw-field "12. Cluster tightness:" t 10 sel "Select cluster tightness")))
+(define (draw-obj-fields k obj sel)
+  (match k
+    ('shape (draw-obj-fields-shape obj sel))
+    ('cluster (draw-obj-fields-cluster obj sel))
     (else empty-image)))
 
 (define (flip-pal-mode p)
@@ -95,12 +65,12 @@
        ['palette
         (above/align
          "left"
-         (text (format "This element will use a ~s selection among colors in ~s" pal-mode (car (list-ref Pa pal))) 10 "black")
+         (text (format "This element will use a ~s selection among colors in ~s" pal-mode (car (list-ref Pa pal))) TEXT-SIZE TEXT-COLOR)
          (display-palette (cadr (list-ref Pa pal))))]
        ['color
         (above/align
          "left"
-         (text (format "This element will use the color ~a" (car (list-ref Cl col))) 10 "black")
+         (text (format "This element will use the color ~a" (car (list-ref Cl col))) TEXT-SIZE TEXT-COLOR)
          (square 100 "solid" (cadr (list-ref Cl col))))])]))
 
 (define (draw-event-obj-menu M Cl Pa Eo)
@@ -108,21 +78,26 @@
      ((EventObjMenuFields name dur c obj-kind obj sel)
       (overlay
        (above/align "left"
-        (text "Create a new Event Element!" 20 "black")
-        (text "To save your current data, press return" 20 "black")
-        (text (format "Currently you have selected field ~a" (add1 sel)) 20 "black")
+        (text "Create a new Event Element!" TEXT-SIZE TEXT-COLOR)
+        (text "To save your current data, press return" TEXT-SIZE TEXT-COLOR)
+        (text (format "Currently you have selected field ~a" (add1 sel)) TEXT-SIZE TEXT-COLOR)
         (draw-field "1. Element name:" name 0 sel "Enter name")
         (draw-field "2. Element duration:" dur 1 sel "Enter duration")
         (draw-color-mode c Cl Pa)
-        ;; TODO add printing of selected palette
         (draw-field "4. Element kind:" obj-kind 3 sel "Select kind")
-        (draw-obj-fields obj sel))
+        (draw-obj-fields obj-kind obj sel))
        (rectangle SCREEN-WIDTH SCREEN-HEIGHT "solid" "gray")))))
+
+
+(define (flip-pal-color-mode pal-mode)
+  (match pal-mode
+    ['random 'continuous]
+    ['continuous 'random]))
 
 (define (scroll-pal-mode pal)
   (match pal
     [(Color-settings mode pal-mode col pal)
-     (Color-settings mode (match pal-mode ['random 'continuous] ['continuous 'random]) col pal)]))
+     (Color-settings mode (flip-pal-color-mode pal-mode) col pal)]))
 
 (define (scroll-pal pal colors palettes)
   (match pal
@@ -131,32 +106,18 @@
        ['color (Color-settings mode pal-mode (remainder (add1 col) (length colors)) pal)]
        ['palette (Color-settings mode pal-mode col (remainder (add1 pal) (length palettes)))])]))
 
-(define (scroll-shape-shape dir sel sha)
-  (match sha
-    ((Shape sh mode si-i si-f x-i y-i x-f y-f)
-     (match sel
-       [4 (Shape (if dir (next-shape sh) (prev-shape sh)) mode si-i si-f x-i y-i x-f y-f)]
-       [5 (Shape sh mode (if dir (safe-add1 si-i) (max 0 (safe-sub1 si-i))) si-f x-i y-i x-f y-f)]
-       [6 (Shape sh mode si-i (if dir (safe-add1 si-f) (max 0 (safe-sub1 si-f))) x-i y-i x-f y-f)]
-       [7 (Shape sh mode si-i si-f (if dir (safe-add1 x-i) (max 0 (safe-sub1 x-i))) y-i x-f y-f)]
-       [8 (Shape sh mode si-i si-f x-i (if dir (safe-add1 y-i) (max 0 (safe-sub1 y-i))) x-f y-f)]
-       [9 (Shape sh mode si-i si-f x-i y-i (if dir (safe-add1 x-f) (max 0 (safe-sub1 x-f))) y-f)]
-       [10 (Shape sh mode si-i si-f x-i y-i x-f (if dir (safe-add1 y-f) (max 0 (safe-sub1 y-f))))]))))
 
-
-(define (make-bckd pal dur P)
+(define (make-bckd pal dur cols pals)
   (match pal
     [(Color-settings mode pal-mode col pal)
      (match mode
-       ['color (Background 0 (cadr (list-ref (Palette-menu-colors P) col)) dur #f)]
-       [else (Background 0
-                         (caadr (list-ref (Palette-menu-palettes P) pal))
-                         dur
-                         (cadr (list-ref (Palette-menu-palettes P) pal)))])]))
+       ['color (make-background/color (cadr (list-ref cols col)) dur)]
+       [else (let ((v (list-ref pals pal)))
+               (make-background/palette (caadr v) dur (cadr v)))])]))
 
-(define (scroll-shape dir sel obj-kind obj)
+(define (scroll-kind dir sel obj-kind obj)
   (match obj-kind
-    ['shape (scroll-shape-shape dir sel obj)]
+    ['shape (scroll-shape dir sel obj)]
     ['cluster (scroll-cluster dir sel obj)]
     [else obj]))
 
@@ -170,9 +131,9 @@
        [3 (let* ((kind-name (if dir (next-kind obj-kind) (prev-kind obj-kind)))
                  (obj (make-blank-kind kind-name)))
             (EventObjMenuFields name dur pal kind-name obj sel))]
-       [else (EventObjMenuFields name dur pal obj-kind (scroll-shape dir sel obj-kind obj) sel)]))))
+       [else (EventObjMenuFields name dur pal obj-kind (scroll-kind dir sel obj-kind obj) sel)]))))
 
-(define (create-event-obj-key-handler i M Eo P)
+(define (create-event-obj-key-handler i M Eo cols pals)
   (match M
     ((EventObjMenuFields name dur pal obj-kind obj sel)
      (match i
@@ -182,15 +143,15 @@
                (values (EventObjMenuFields name dur pal obj-kind obj sel) Eo))]
        ["."
         (match obj-kind
-          ['background (values M `((,(string->symbol name) . ,(make-bckd pal dur P)) . ,Eo))]
+          ['background (values M `((,(string->symbol name) . ,(make-bckd pal dur cols pals)) . ,Eo))]
           [else
-           (let ((cs (Obj->Components obj-kind obj dur pal (Palette-menu-colors P) (Palette-menu-palettes P))))
-             (values M `((,(string->symbol name) . ,(Event-Object dur cs)) . ,Eo)))])]
+           (let ((cs (Obj->Components obj-kind obj dur pal cols pals)))
+             (values M (add-event-obj-to-list name dur cs Eo)))])]
        ["left" (values (scroll #f sel M) Eo)]
        ["right" (values (scroll #t sel M) Eo)]
        ["=" (values (EventObjMenuFields name dur (flip-pal-mode pal) obj-kind obj sel) Eo)]
        ["`" (values (EventObjMenuFields name dur (scroll-pal-mode pal) obj-kind obj sel) Eo)]
-       ["-" (values (EventObjMenuFields name dur (scroll-pal pal (Palette-menu-colors P) (Palette-menu-palettes P)) obj-kind obj sel) Eo)]
+       ["-" (values (EventObjMenuFields name dur (scroll-pal pal cols pals) obj-kind obj sel) Eo)]
        [(? (λ (_) (= sel 0)))
         (match i
           [" " (values (EventObjMenuFields "" dur pal obj-kind obj sel) Eo)]

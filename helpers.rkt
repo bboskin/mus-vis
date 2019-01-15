@@ -5,22 +5,35 @@
 (provide (all-defined-out))
 
 ;; constants
-(define SCREEN-WIDTH 400)
-(define SCREEN-HEIGHT 400)
+(define SCREEN-WIDTH 800)
+(define SCREEN-HEIGHT 800)
 
-(define (draw-scene c)
-  (rectangle SCREEN-WIDTH SCREEN-HEIGHT "solid" c))
+(define INIT-X-COORD (/ SCREEN-WIDTH 2))
+(define INIT-Y-COORD (/ SCREEN-HEIGHT 2))
+
+(define INIT-SHAPE-SIZE 25)
+(define INIT-SHAPE 'circle)
+(define INIT-OUTLINE-MODE "solid")
+
+(define INIT-DURATION 50)
+
+(define TEXT-SIZE 20)
+(define TEXT-COLOR "black")
+
+(define PALETTE-LEN 400)
+(define PALETTE-HEIGHT 100)
+
+(define (draw-scene c) (rectangle SCREEN-WIDTH SCREEN-HEIGHT "solid" c))
 
 (define EMPTY-SCENE (draw-scene (make-color 0 0 0 0)))
 
-(define gray-side-panel
-  (rectangle (/ SCREEN-WIDTH 4) SCREEN-HEIGHT "solid" "gray"))
+(define gray-side-panel (rectangle (/ SCREEN-WIDTH 4) SCREEN-HEIGHT "solid" "gray"))
 
 ;; useful functions
 
 
 (define (scroll-helper dir v)
-  (if dir (add1 v) (safe-sub1 v)))
+  (if dir (safe-add1 v) (safe-sub1 v)))
 (define (next-shape sh)
   (match sh [#f 'square] ['square 'circle] ['circle 'triangle] ['triangle 'square]))
 (define (prev-shape sh)
@@ -54,7 +67,7 @@
 ;; drawing text
 
 (define (blank-text sel this if-yes if-no)
-  (text (if (= sel this) if-yes if-no) 10 "black"))
+  (text (if (= sel this) if-yes if-no) TEXT-SIZE TEXT-COLOR))
 (define (menu-text txt)
   (text
    (cond
@@ -67,7 +80,7 @@
                                  "green:" (number->string g)
                                  "blue:" (number->string b)))))
      (else txt))
-   10 "black"))
+   TEXT-SIZE TEXT-COLOR))
 
 (define (draw-field mtext val i sel notext)
   (beside (menu-text mtext)
@@ -154,11 +167,9 @@
      (let* ((colors `(,cl1 ...)))
        (gradient/ls colors)))))
 
-(define MAX-PAL-LEN 400)
-
 (define (display-palette pal)
-  (let ((k (/ MAX-PAL-LEN (max (length pal) 1))))
-    (foldr (λ (x ans) (beside (rectangle k 100 "solid" x) ans)) empty-image pal)))
+  (let ((k (/ PALETTE-LEN (max (length pal) 1))))
+    (foldr (λ (x ans) (beside (rectangle k PALETTE-HEIGHT "solid" x) ans)) empty-image pal)))
 
 
 ;; Distance formulas

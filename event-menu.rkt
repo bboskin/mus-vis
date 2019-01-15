@@ -7,7 +7,7 @@
 (provide (all-defined-out))
 
 (define blank-event-menu
-  (list "" 50 #t (Event-Sequence 0 '() '() black-bckgd) #f (Event-Sequence 0 '() '() black-bckgd)))
+  (list "" 50 #t blank-event-sequence #f blank-event-sequence))
 
 (define event-menu-bckgd
   (draw-scene (color 20 20 20)))
@@ -31,11 +31,9 @@
   (match m
     [`(,name ,dur ,loop? ,seq ,playing? ,play-seq)
      (if playing?
-         (match play-seq
-           ((Event-Sequence cl yes no bck)
-            (if (>= cl dur)
-                (list name dur loop? seq loop? seq)
-                (list name dur loop? seq #t (advance-event-sequence play-seq)))))
+         (if (>= (get-event-sequence-time play-seq) dur)
+             (list name dur loop? seq loop? seq)
+             (list name dur loop? seq #t (advance-event-sequence play-seq)))
          m)]))
 
 (define (draw-event-menu m Eo)
@@ -60,28 +58,8 @@
          [" " (values `(,name ,dur ,loop? ,seq ,(not playing?) ,seq-playing) E)]
          ["r" (values `(,name ,dur ,loop? ,seq #f ,seq) E)]
          ["l" (values `(,name ,dur ,(not loop?) ,seq ,playing? ,seq-playing) E)]
-         ["0" (values `(,name ,dur ,loop? ,blank-es #f ,blank-es) E)]
+         ["0" (values `(,name ,dur ,loop? ,blank-event-sequence #f ,blank-event-sequence) E)]
          ["left" (values `(,name ,(max 0 (sub1 dur)) loop? ,seq ,playing? ,seq-playing) E)]
          ["right" (values `(,name ,(add1 dur) loop? ,seq ,playing? ,seq-playing) E)]
-         [else (match* (seq seq-playing)
-                 [((Event-Sequence 0 '() ls bckgd1) (Event-Sequence cl2 yes2 no2 bckgd2))
-                  (match (string->number i)
-                    [(? number? i)
-                     (let ((curr (cdr (list-ref Eo (sub1 i)))))
-                       (match curr
-                         [(Background s d c n)
-                          (values (list name dur loop?
-                                        (Event-Sequence 0 '() (cons curr ls) bckgd1)
-                                        playing?
-                                        (Event-Sequence cl2 yes2 no2 curr))
-                                  E)]
-                       [else
-                        (let* ((eo (instantiate-event-obj (cdr (list-ref Eo (sub1 i))) 0))
-                               (ev (Event cl2 dur loop? (list (instantiate-event-obj (cdr (list-ref Eo (sub1 i))) 0)))))
-                          (values (list name dur loop?
-                                        (Event-Sequence 0 '() (cons ev ls) bckgd1)
-                                        playing?
-                                        (Event-Sequence cl2 (cons eo yes2) no2 bckgd2))
-                                  E))]))]
-                    [else (values `(,(string-append name i) ,dur ,loop? ,seq ,playing? ,seq-playing) E)])])]         
+         [else (update-event-menu-sequences seq seq-playing i name dur loop? playing? E Eo)]         
          [else (values m E)]))))

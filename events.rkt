@@ -3,12 +3,28 @@
 (require "helpers.rkt"
          2htdp/image)
 
-(provide (all-defined-out))
+(provide
+ blank-event-sequence
+ draw-event-sequence
+ advance-event-sequence
+ get-event-sequence-time
+ make-component
+ make-background/color
+ make-background/palette
+ add-event-obj-to-list
+ update-event-menu-sequences
+ make-event-obj
+ es1)
 
 (struct Background (start-time color dur next))
 (struct Component (color shape x y))
 (struct Event-Sequence (curr-time active-events waiting-events bckgd))
 (struct Event-Object (death cs))
+
+(define (make-event-obj end params)
+  (Event-Object end (make-component params)))
+
+(define get-event-sequence-time Event-Sequence-curr-time)
 
 (define black-bckgd (Background 0 (make-color 0 0 0) 0 #f))
 (define blank-component (Component `(color ,red) `((#f #f) (#f #f) (#f #f)) '(#f #f) '(#f #f)))
@@ -20,6 +36,16 @@
 
 (define (draw-background b)
   (match b ((Background s c d n) (draw-scene c))))
+
+
+(define blank-event-sequence
+  (Event-Sequence 0 '() '() black-bckgd))
+
+(define (make-background/color cls dur)
+  (Background 0 cls dur #f))
+
+(define (make-background/palette name dur p)
+  (Background 0 name dur p))
 
 (define (get-color-from-pkg p)
   (match p
@@ -97,6 +123,8 @@ a) a time when they will be done and
 b) a list of their components
 |#
 
+(define (add-event-obj-to-list name dur cs Eo)
+  `((,(string->symbol name) . ,(Event-Object dur cs)) . ,Eo))
 
 (define ((event-object-alive? cl) e)
   (match e
@@ -209,3 +237,29 @@ In addition, Events can loop, and their subpieces can be either Events or EventO
      (let ((yes (map update-event-object (filter (event-object-alive? cl) yes))))
        (let-values (((to-add no bk) (find-new-events cl no '() '() (update-background bckgd))))
          (Event-Sequence (add1 cl) (append yes to-add) no bk)))]))
+
+
+
+
+(define (update-event-menu-sequences seq seq-playing i name dur loop? playing? E Eo)
+  (match* (seq seq-playing)
+    [((Event-Sequence 0 '() ls bckgd1) (Event-Sequence cl2 yes2 no2 bckgd2))
+     (match (string->number i)
+       [(? number? i)
+        (let ((curr (cdr (list-ref Eo (sub1 i)))))
+          (match curr
+            [(Background s d c n)
+             (values (list name dur loop?
+                           (Event-Sequence 0 '() (cons curr ls) bckgd1)
+                           playing?
+                           (Event-Sequence cl2 yes2 no2 curr))
+                     E)]
+            [else
+             (let* ((eo (instantiate-event-obj (cdr (list-ref Eo (sub1 i))) 0))
+                    (ev (Event cl2 dur loop? (list (instantiate-event-obj (cdr (list-ref Eo (sub1 i))) 0)))))
+               (values (list name dur loop?
+                             (Event-Sequence 0 '() (cons ev ls) bckgd1)
+                             playing?
+                             (Event-Sequence cl2 (cons eo yes2) no2 bckgd2))
+                                  E))]))]
+                    [else (values `(,(string-append name i) ,dur ,loop? ,seq ,playing? ,seq-playing) E)])]))

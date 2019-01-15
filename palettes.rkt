@@ -1,11 +1,19 @@
 #lang racket
 
 (require "helpers.rkt" 2htdp/image)
-(provide (all-defined-out))
+(provide
+ init-palette-menu
+ draw-palette-menu
+ palette-key-handler
+ get-colors
+ get-palettes)
 
 
 (struct Palette-menu
   (colors palettes gradient? mode col-name editing-col cl-sel pal-name editing-pal))
+
+(define get-colors Palette-menu-colors)
+(define get-palettes Palette-menu-palettes)
 
 (define init-palette-menu
   (Palette-menu
@@ -18,6 +26,7 @@
   (match m
     ['palette 'color]
     ['color 'palette]))
+
 
 (define (drop-palette-item mode cls pal)
   (match mode

@@ -22,10 +22,6 @@ The user interface for this thingy
          [(World ES Pal M P Eo E S) b])))))
 
 
-(define blank-event-sequence
-  (Event-Sequence 0 '() '() black-bckgd))
-
-
 (define init-menus
   `(playing
     (playing . ())
@@ -63,14 +59,10 @@ The user interface for this thingy
     ('playing 'create-palette)))
 
 
-(define (make-event-obj end params)
-  (Event-Object end (make-component params)))
-
 (define init-World (World '() init-palette-menu init-menus #f '() '() '()))
 (define World2 (World es1 init-palette-menu init-menus #f '() '() es1))
 
-(define (draw-live-menu M)
-  gray-side-panel)
+(define (draw-live-menu M) gray-side-panel)
 
 (define (live-key-handler i)
   (λW (Q C m play? Eo E S)
@@ -81,11 +73,9 @@ The user interface for this thingy
 
 #|
 Feature todos:
-
+-- organize code/establish constants
 -- make ordering of elements what we want.
--- make background modifiable.
 
--- clusters!
 -- graphs!
 
 -- finish final screen/event saving
@@ -98,7 +88,7 @@ Feature todos:
   (λW (ES Pal M play? Eo E S)
       (match (get-menu-mode M)
         ('playing (beside (draw-live-menu (get-menu-live M)) (draw-event-sequence ES)))
-        ('create-event-obj (draw-event-obj-menu (get-menu-event-obj M) (Palette-menu-colors Pal) (Palette-menu-palettes Pal) Eo))
+        ('create-event-obj (draw-event-obj-menu (get-menu-event-obj M) (get-colors Pal) (get-palettes Pal) Eo))
         ('create-event (draw-event-menu (get-menu-event M) Eo))
         ('create-palette (draw-palette-menu Pal)))))
 
@@ -125,7 +115,7 @@ Feature todos:
          [else
           (match (car m)
             ['playing ((live-key-handler i) w)]
-            ['create-event-obj (let-values (((m-new Eo) (create-event-obj-key-handler i (get-menu-event-obj m) Eo Pal)))
+            ['create-event-obj (let-values (((m-new Eo) (create-event-obj-key-handler i (get-menu-event-obj m) Eo (get-colors Pal) (get-palettes Pal))))
                                  (World Q Pal (set-event-obj m-new m) play? Eo E S))]
             ['create-event (let-values (((m-new E) (create-event-key-handler i (get-menu-event m) Eo E)))
                              (World Q Pal (set-event m-new m) play? Eo E S))]
